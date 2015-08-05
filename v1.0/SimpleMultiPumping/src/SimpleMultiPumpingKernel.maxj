@@ -1,0 +1,53 @@
+
+import com.maxeler.maxcompiler.v0.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class SimpleMultiPumpingMultiplyKernel extends Kernel {
+
+    private static final DFEType scalarValueType = dfeFloat(8, 24);
+    // private static final DFEType scalarIndexType = dfeUInt(32);
+
+    // here we put the length of the whole loop into kernel parameter
+    SimpleMultiPumpingMultiplyKernel(KernelParameters parameters) {
+        super(parameters);
+        
+        DFEVar counter = control.count.simpleCounter(1);
+
+        // counter runs at 2x clock rate
+        DFEVar x0 = io.input("x0", scalarValueType, counter === 0);
+        DFEVar y0 = io.input("y0", scalarValueType, counter === 0);
+        DFEVar x1 = io.input("x1", scalarValueType, counter === 1);
+        DFEVar y1 = io.input("y1", scalarValueType, counter === 1);
+        
+        DFEVar x = counter === 0 ? x0 : x1;
+        DFEVar y = counter === 1 ? y0 : y1;
+        DFEVar ans = x * y;
+
+        io.output("z0", ans, scalarValueType, counter === 0);
+        io.output("z1", ans, scalarValueType, counter === 1);
+    }
+}
+
+class SimpleMultiPumpingMultiplexKernel extends Kernel {
+
+    private static final DFEType scalarValueType = dfeFloat(8, 24);
+    // private static final DFEType scalarIndexType = dfeUInt(32);
+
+    // here we put the length of the whole loop into kernel parameter
+    SimpleMultiPumpingMultiplexKernel(KernelParameters parameters) {
+        super(parameters);
+        
+        DFEVar x = io.input("x", scalarValueType);
+    
+        io.output("a", x, scalarValueType);
+        io.output("b", x, scalarValueType);
+    }
+} 

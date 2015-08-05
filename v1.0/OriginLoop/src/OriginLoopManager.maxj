@@ -1,0 +1,87 @@
+
+import com.maxeler.maxcompiler.v2.build.EngineParameters;
+import com.maxeler.maxcompiler.v2.managers.custom.CustomManager;
+import com.maxeler.maxcompiler.v2.managers.custom.DFELink;
+import com.maxeler.maxcompiler.v2.managers.custom.blocks.KernelBlock;
+import com.maxeler.maxcompiler.v2.managers.custom.ManagerClock;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.CPUTypes;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.EngineInterface;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.InterfaceParam;
+
+class OriginLoopManager extends CustomManager {
+
+    private final int clockRate1X = 100;
+
+    OriginLoopManager(EngineParameters engineParameters) {
+        super(engineParameters);
+
+        KernelBlock mk0 = addKernel(
+            new OriginLoopMultiplyKernel(
+                makeKernelParameters("OriginLoopMultiplyKernel0")
+                ));
+        KernelBlock mk1 = addKernel(
+            new OriginLoopMultiplyKernel(
+                makeKernelParameters("OriginLoopMultiplyKernel1")
+                ));
+        KernelBlock k0 = addKernel(
+            new OriginLoopMultiplexKernel(
+                makeKernelParameters("OriginLoopMultiplexKernel0")
+                ));
+        KernelBlock k1 = addKernel(
+            new OriginLoopMultiplexKernel(
+                makeKernelParameters("OriginLoopMultiplexKernel1")
+                ));
+
+        // clock configuration
+        ManagerClock clock1x = generateStreamClock("clock1x", clockRate1X);
+        //ManagerClock clock2x = generateStreamClock("clock2x", clockRate1X * 2);
+        mk0.setClock(clock1x);
+        mk1.setClock(clock1x);
+        k0.setClock(clock1x);
+        k1.setClock(clock1x);
+
+        DFELink xStream = addStreamFromCPU("x");
+        DFELink yStream = addStreamFromCPU("y");
+
+        k0.getInput("x") <== xStream;
+        k1.getInput("x") <== yStream;
+
+        mk0.getInput("x") <== k0.getOutput("a");
+        mk1.getInput("x") <== k1.getOutput("a");
+        mk0.getInput("y") <== k0.getOutput("b");
+        mk1.getInput("y") <== k1.getOutput("b");
+
+        DFELink z0Stream = addStreamToCPU("z0");
+        z0Stream <== mk0.getOutput("z");
+        DFELink z1Stream = addStreamToCPU("z1");
+        z1Stream <== mk1.getOutput("z");
+    }
+
+    static EngineInterface interfaceDefault() {
+        EngineInterface ei = new EngineInterface();
+
+        InterfaceParam length = ei.addParam("length", CPUTypes.INT);
+        InterfaceParam lengthInBytes = length * CPUTypes.FLOAT.sizeInBytes();
+
+        ei.setTicks("OriginLoopMultiplyKernel0", length);
+        ei.setTicks("OriginLoopMultiplyKernel1", length);
+        ei.setTicks("OriginLoopMultiplexKernel0", length);
+        ei.setTicks("OriginLoopMultiplexKernel1", length);
+        ei.setStream("x", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("y", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("z0", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("z1", CPUTypes.FLOAT, lengthInBytes);
+
+        return ei;
+    }
+
+    public static void main(String[] args) {
+        EngineParameters params = new EngineParameters(args);
+        OriginLoopManager manager = new OriginLoopManager(params);
+
+        manager.createSLiCinterface(interfaceDefault());
+
+        manager.build();
+    }
+}
+

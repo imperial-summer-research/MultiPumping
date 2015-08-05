@@ -1,0 +1,81 @@
+
+import com.maxeler.maxcompiler.v2.build.EngineParameters;
+import com.maxeler.maxcompiler.v2.managers.custom.CustomManager;
+import com.maxeler.maxcompiler.v2.managers.custom.DFELink;
+import com.maxeler.maxcompiler.v2.managers.custom.blocks.KernelBlock;
+import com.maxeler.maxcompiler.v2.managers.custom.ManagerClock;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.CPUTypes;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.EngineInterface;
+import com.maxeler.maxcompiler.v2.managers.engine_interfaces.InterfaceParam;
+
+class ResourceSharingManager extends CustomManager {
+
+    private final int clockRate1X = 100;
+
+    ResourceSharingManager(EngineParameters engineParameters) {
+        super(engineParameters);
+
+        KernelBlock k = addKernel(
+            new ResourceSharingMultiplyKernel(
+                makeKernelParameters("ResourceSharingMultiplyKernel")
+                ));
+        KernelBlock k0 = addKernel(
+            new ResourceSharingMultiplexKernel(
+                makeKernelParameters("ResourceSharingMultiplexKernel0")
+                ));
+        KernelBlock k1 = addKernel(
+            new ResourceSharingMultiplexKernel(
+                makeKernelParameters("ResourceSharingMultiplexKernel1")
+                ));
+
+        // clock configuration
+        ManagerClock clock1x = generateStreamClock("clock1x", clockRate1X);
+        //ManagerClock clock2x = generateStreamClock("clock2x", clockRate1X);
+        k.setClock(clock1x);
+        k0.setClock(clock1x);
+        k1.setClock(clock1x);
+
+        DFELink xStream = addStreamFromCPU("x");
+        DFELink yStream = addStreamFromCPU("y");
+
+        k0.getInput("x") <== xStream;
+        k1.getInput("x") <== yStream;
+
+        k.getInput("x0") <== k0.getOutput("a");
+        k.getInput("x1") <== k1.getOutput("a");
+        k.getInput("y0") <== k0.getOutput("b");
+        k.getInput("y1") <== k1.getOutput("b");
+
+        DFELink z0Stream = addStreamToCPU("z0");
+        z0Stream <== k.getOutput("z0");
+        DFELink z1Stream = addStreamToCPU("z1");
+        z1Stream <== k.getOutput("z1");
+    }
+
+    static EngineInterface interfaceDefault() {
+        EngineInterface ei = new EngineInterface();
+
+        InterfaceParam length = ei.addParam("length", CPUTypes.INT);
+        InterfaceParam lengthInBytes = length * CPUTypes.FLOAT.sizeInBytes();
+
+        ei.setTicks("ResourceSharingMultiplyKernel", length * 2);
+        ei.setTicks("ResourceSharingMultiplexKernel0", length);
+        ei.setTicks("ResourceSharingMultiplexKernel1", length);
+        ei.setStream("x", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("y", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("z0", CPUTypes.FLOAT, lengthInBytes);
+        ei.setStream("z1", CPUTypes.FLOAT, lengthInBytes);
+
+        return ei;
+    }
+
+    public static void main(String[] args) {
+        EngineParameters params = new EngineParameters(args);
+        ResourceSharingManager manager = new ResourceSharingManager(params);
+
+        manager.createSLiCinterface(interfaceDefault());
+
+        manager.build();
+    }
+}
+

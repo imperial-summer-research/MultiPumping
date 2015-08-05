@@ -1,0 +1,46 @@
+
+import com.maxeler.maxcompiler.v0.utils.MathUtils;
+import com.maxeler.maxcompiler.v2.kernelcompiler.Kernel;
+import com.maxeler.maxcompiler.v2.kernelcompiler.KernelParameters;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.CounterChain;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.core.Stream.OffsetExpr;
+import com.maxeler.maxcompiler.v2.kernelcompiler.stdlib.memory.Memory;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEType;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.base.DFEVar;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVector;
+import com.maxeler.maxcompiler.v2.kernelcompiler.types.composite.DFEVectorType;
+
+class OriginLoopMultiplyKernel extends Kernel {
+
+    private static final DFEType scalarValueType = dfeFloat(8, 24);
+    // private static final DFEType scalarIndexType = dfeUInt(32);
+
+    // here we put the length of the whole loop into kernel parameter
+    OriginLoopMultiplyKernel(KernelParameters parameters) {
+        super(parameters);
+        
+        //DFEVar counter = control.count.simpleCounter(1);
+
+        // counter runs at 2x clock rate
+        DFEVar x = io.input("x", scalarValueType);
+        DFEVar y = io.input("y", scalarValueType);
+        
+        io.output("z", x * y, scalarValueType);
+    }
+}
+
+class OriginLoopMultiplexKernel extends Kernel {
+
+    private static final DFEType scalarValueType = dfeFloat(8, 24);
+    // private static final DFEType scalarIndexType = dfeUInt(32);
+
+    // here we put the length of the whole loop into kernel parameter
+    OriginLoopMultiplexKernel(KernelParameters parameters) {
+        super(parameters);
+        
+        DFEVar x = io.input("x", scalarValueType);
+    
+        io.output("a", x, scalarValueType);
+        io.output("b", x, scalarValueType);
+    }
+} 
